@@ -3,7 +3,14 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-SDLRenderer::SDLRenderer() : m_Renderer(nullptr) {}
+// Размеры символа в пикселях
+const int CHAR_WIDTH = 8;
+const int CHAR_HEIGHT = 16;
+
+SDLRenderer::SDLRenderer() 
+    : m_Renderer(nullptr)
+    , m_TextRenderer(std::make_unique<TextRenderer>(TEXT_BUFFER_WIDTH, TEXT_BUFFER_HEIGHT))
+{}
 
 SDLRenderer::~SDLRenderer() {
     Shutdown();
@@ -43,7 +50,65 @@ void SDLRenderer::BeginFrame() {
 }
 
 void SDLRenderer::EndFrame() {
+    RenderText();
     SDL_RenderPresent(m_Renderer);
+}
+
+void SDLRenderer::RenderText() {
+    // Для каждого символа в буфере
+    for (int y = 0; y < m_TextRenderer->GetHeight(); ++y) {
+        for (int x = 0; x < m_TextRenderer->GetWidth(); ++x) {
+            const Glyph& glyph = m_TextRenderer->GetGlyph(x, y);
+
+            // Рисуем фон
+            SDL_Rect bgRect = {
+                x * CHAR_WIDTH,
+                y * CHAR_HEIGHT,
+                CHAR_WIDTH,
+                CHAR_HEIGHT
+            };
+            SDL_SetRenderDrawColor(m_Renderer, 
+                glyph.background.r,
+                glyph.background.g,
+                glyph.background.b,
+                glyph.background.a);
+            SDL_RenderFillRect(m_Renderer, &bgRect);
+
+            // Рисуем символ (в SDL2 это упрощенно, для полной реализации нужно использовать SDL_ttf)
+            SDL_SetRenderDrawColor(m_Renderer,
+                glyph.foreground.r,
+                glyph.foreground.g,
+                glyph.foreground.b,
+                glyph.foreground.a);
+            
+            // Рисуем простой прямоугольник вместо символа (временно)
+            SDL_Rect charRect = {
+                x * CHAR_WIDTH + 2,
+                y * CHAR_HEIGHT + 2,
+                CHAR_WIDTH - 4,
+                CHAR_HEIGHT - 4
+            };
+            if (glyph.character != ' ') {
+                SDL_RenderFillRect(m_Renderer, &charRect);
+            }
+        }
+    }
+}
+
+void SDLRenderer::SetGlyph(int x, int y, const Glyph& glyph) {
+    m_TextRenderer->SetGlyph(x, y, glyph);
+}
+
+void SDLRenderer::SetChar(int x, int y, char c, const Color& fg, const Color& bg) {
+    m_TextRenderer->SetChar(x, y, c, fg, bg);
+}
+
+void SDLRenderer::SetString(int x, int y, const std::string& text, const Color& fg, const Color& bg) {
+    m_TextRenderer->SetString(x, y, text, fg, bg);
+}
+
+void SDLRenderer::ClearText(const Color& bg) {
+    m_TextRenderer->Clear(bg);
 }
 
 void SDLRenderer::Shutdown() {
