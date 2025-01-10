@@ -1,46 +1,65 @@
-# Список исходных файлов
-set(SOURCE_FILES
-    main.cpp
-    Engine.cpp
-    Window.cpp
-    Renderer/OpenGLRenderer.cpp
-    Renderer/SDLRenderer.cpp
-    Renderer/TextRenderer.cpp
+# Собираем список исходных файлов
+file(GLOB_RECURSE SOURCES 
+    "*.cpp"
+    "Audio/*.cpp"
+    "Menu/*.cpp"
+    "Renderer/*.cpp"
+    "World/*.cpp"
 )
 
-add_executable(DegraEngine ${SOURCE_FILES})
+# Создаем исполняемый файл
+add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_include_directories(DegraEngine PRIVATE
+# Добавляем пути для поиска заголовочных файлов
+target_include_directories(${PROJECT_NAME} 
+    PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${OPENGL_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIR}
-    ${SDL2_INCLUDE_DIR}
-    ${SDL2_IMAGE_INCLUDE_DIR}
-    ${GLFW_INCLUDE_DIR}
+    ${SDL2_TTF_INCLUDE_DIR}
 )
 
-# Добавляем определения для SDL2 и GLFW
-target_compile_definitions(DegraEngine PRIVATE
-    SDL_MAIN_HANDLED
-    GLFW_EXPOSE_NATIVE_WIN32
-    GLEW_STATIC
-)
+# Если FMOD найден, добавляем его пути
+if(USE_FMOD AND EXISTS "${FMOD_ROOT}")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${FMOD_INCLUDE_DIR})
+endif()
 
-target_link_libraries(DegraEngine PRIVATE
-    ${OPENGL_LIBRARIES}
+# Подключаем библиотеки
+target_link_libraries(${PROJECT_NAME} 
+    PRIVATE 
+    SDL2::SDL2 
+    SDL2::SDL2main
+    ${SDL2_TTF_LIBRARY}
     ${GLEW_LIBRARY}
-    ${SDL2_LIBRARY}
-    ${SDL2_MAIN_LIBRARY}
-    ${SDL2_IMAGE_LIBRARY}
-    ${GLFW_LIBRARY}
+    glfw
+    OpenGL::GL
 )
 
-# Копируем DLL файлы в директорию сборки
-if(WIN32)
-    add_custom_command(TARGET DegraEngine POST_BUILD
+# Если FMOD найден, подключаем его библиотеку
+if(USE_FMOD AND EXISTS "${FMOD_ROOT}")
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${FMOD_LIBRARY})
+endif()
+
+# Копируем необходимые DLL файлы
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${GLEW_BINARY}
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)
+
+# Копируем SDL2_ttf DLL
+if(EXISTS "${SDL2_TTF_BINARY}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${SDL2_DIR}/lib/x64/SDL2.dll"
-            "${SDL2_IMAGE_DIR}/lib/x64/SDL2_image.dll"
-            $<TARGET_FILE_DIR:DegraEngine>
+        ${SDL2_TTF_BINARY}
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    )
+endif()
+
+# Если FMOD найден, копируем его DLL
+if(USE_FMOD AND EXISTS "${FMOD_ROOT}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${FMOD_BINARY}
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endif() 
