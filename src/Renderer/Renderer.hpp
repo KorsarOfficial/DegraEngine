@@ -21,6 +21,7 @@ public:
     virtual void SetGlyph(int x, int y, const Glyph& glyph) = 0;
     virtual void SetChar(int x, int y, char c, const Color& fg = Color(), const Color& bg = Color(0, 0, 0)) = 0;
     virtual void SetString(int x, int y, const std::string& text, const Color& fg = Color(), const Color& bg = Color(0, 0, 0)) = 0;
+    virtual void SetWString(int x, int y, const std::wstring& text, const Color& fg = Color(), const Color& bg = Color(0, 0, 0)) = 0;
     virtual void ClearText(const Color& bg = Color(0, 0, 0)) = 0;
 
 protected:
