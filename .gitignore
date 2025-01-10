@@ -1,0 +1,28 @@
+# Build directories
+build/
+out/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+*.sdf
+*.opensdf
+
+# Dependencies
+external/
+
+# Compiled files
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+!CMakeLists.txt 
