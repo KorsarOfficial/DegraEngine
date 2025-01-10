@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Projects\Degra Engine\build\CMakeFiles\f22cee286e1472efdbda6f59eb1c0534\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{E5ABA4A7-1AE8-3714-A1B5-6C4C130F8410}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
