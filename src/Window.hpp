@@ -11,10 +11,13 @@ public:
 
     bool Initialize(const std::string& title, int width, int height);
     void Update();
+    void SwapBuffers();
     void Shutdown();
 
     bool ShouldClose() const;
     GLFWwindow* GetNativeWindow() const { return m_Window; }
+    int GetWidth() const { return m_Width; }
+    int GetHeight() const { return m_Height; }
 
 private:
     GLFWwindow* m_Window;
