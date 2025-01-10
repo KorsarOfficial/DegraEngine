@@ -1,42 +1,41 @@
 #pragma once
 
-#include "Renderer.hpp"
 #include <SDL.h>
-#include <string>
-#include <unordered_map>
 #include <memory>
+#include "Color.hpp"
+#include "TextRenderer.hpp"
+#include "IRenderer.hpp"
 
-class SDLRenderer : public Renderer {
+class SDLRenderer : public IRenderer {
 public:
     SDLRenderer();
     ~SDLRenderer() override;
 
-    bool Initialize(Window* window) override;
-    void BeginFrame() override;
-    void EndFrame() override;
-    void Shutdown() override;
+    // Запрещаем копирование и присваивание
+    SDLRenderer(const SDLRenderer&) = delete;
+    SDLRenderer& operator=(const SDLRenderer&) = delete;
+    SDLRenderer(SDLRenderer&&) = delete;
+    SDLRenderer& operator=(SDLRenderer&&) = delete;
 
-    // Методы для рендеринга
-    void DrawSprite(const std::string& texturePath, float x, float y, float width, float height) override;
-    void DrawLine(float x1, float y1, float x2, float x2, float thickness) override;
-    void SetClearColor(float r, float g, float b, float a) override;
+    void Initialize(int width, int height) override;
+    void Clear(const Color& color) override;
+    void Present() override;
+
+    void DrawRect(int x, int y, int width, int height, const Color& color) override;
+    void FillRect(int x, int y, int width, int height, const Color& color) override;
 
     // Методы для работы с текстом
-    void SetGlyph(int x, int y, const Glyph& glyph) override;
-    void SetChar(int x, int y, char c, const Color& fg = Color(), const Color& bg = Color(0, 0, 0)) override;
-    void SetString(int x, int y, const std::string& text, const Color& fg = Color(), const Color& bg = Color(0, 0, 0)) override;
-    void ClearText(const Color& bg = Color(0, 0, 0)) override;
+    void RenderText(const std::string& text, int x, int y, const Color& color) override;
+    void RenderUTF8Text(const std::string& text, int x, int y, const Color& color) override;
+    void GetTextSize(const std::string& text, int& width, int& height) override;
+    void GetUTF8TextSize(const std::string& text, int& width, int& height) override;
+
+    SDL_Renderer* GetSDLRenderer() { return m_Renderer; }
 
 private:
-    SDL_Renderer* m_Renderer;
-    std::unordered_map<std::string, SDL_Texture*> m_TextureCache;
-    std::unique_ptr<TextRenderer> m_TextRenderer;
+    void Shutdown();
 
-    // Размеры текстового буфера
-    static const int TEXT_BUFFER_WIDTH = 80;
-    static const int TEXT_BUFFER_HEIGHT = 25;
-
-    SDL_Texture* LoadTexture(const std::string& path);
-    void ClearTextureCache();
-    void RenderText();
+    std::unique_ptr<TextRenderer> m_TextRenderer;  // Должен быть уничтожен первым
+    SDL_Renderer* m_Renderer;  // Затем этот
+    SDL_Window* m_Window;  // И последним этот
 }; 
