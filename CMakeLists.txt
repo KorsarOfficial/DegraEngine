@@ -1,53 +1,53 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(DegraEngine)
 
+# Устанавливаем стандарт C++
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Пути к библиотекам
-set(SDL2_DIR "${CMAKE_SOURCE_DIR}/external/SDL2")
-set(GLFW_DIR "${CMAKE_SOURCE_DIR}/external/glfw")
-set(GLEW_DIR "${CMAKE_SOURCE_DIR}/external/glew")
-set(FMOD_DIR "${CMAKE_SOURCE_DIR}/external/fmod")
-set(SDL2_IMAGE_DIR "${CMAKE_SOURCE_DIR}/external/SDL2_image")
+# Настройка vcpkg
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
 
-# Находим OpenGL
+# Находим необходимые пакеты
 find_package(OpenGL REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
 
-# Настройка SDL2
-set(SDL2_INCLUDE_DIR "${SDL2_DIR}/include")
-set(SDL2_LIBRARY "${SDL2_DIR}/lib/x64/SDL2.lib")
-set(SDL2_MAIN_LIBRARY "${SDL2_DIR}/lib/x64/SDL2main.lib")
-
-# Настройка SDL2_image
-set(SDL2_IMAGE_INCLUDE_DIR "${SDL2_IMAGE_DIR}/include")
-set(SDL2_IMAGE_LIBRARY "${SDL2_IMAGE_DIR}/lib/x64/SDL2_image.lib")
-
-# Настройка GLFW
-set(GLFW_INCLUDE_DIR "${GLFW_DIR}/include")
-set(GLFW_LIBRARY "${GLFW_DIR}/lib-vc2022/glfw3.lib")
+# Настройка SDL2_ttf
+set(SDL2_TTF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL2_ttf" CACHE PATH "Path to SDL2_ttf")
+if(EXISTS "${SDL2_TTF_PATH}")
+    set(SDL2_TTF_INCLUDE_DIR "${SDL2_TTF_PATH}/include")
+    set(SDL2_TTF_LIBRARY "${SDL2_TTF_PATH}/lib/x64/SDL2_ttf.lib")
+    set(SDL2_TTF_BINARY "${SDL2_TTF_PATH}/bin/x64/SDL2_ttf.dll")
+endif()
 
 # Настройка GLEW
-set(GLEW_INCLUDE_DIR "${GLEW_DIR}/include")
-set(GLEW_LIBRARY "${GLEW_DIR}/lib/Release/x64/glew32s.lib")
+set(GLEW_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/glew/include")
+set(GLEW_LIBRARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/glew/lib/Release/x64")
+set(GLEW_BINARY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/glew/bin/Release/x64")
+set(GLEW_LIBRARY "${GLEW_LIBRARY_DIR}/glew32.lib")
+set(GLEW_BINARY "${GLEW_BINARY_DIR}/glew32.dll")
 
-# Настройка FMOD
-set(FMOD_INCLUDE_DIR "${FMOD_DIR}/include")
-set(FMOD_LIBRARY_DIR "${FMOD_DIR}/lib")
-if(WIN32)
-    set(FMOD_LIBRARIES 
-        "${FMOD_LIBRARY_DIR}/fmod_vc.lib"
-        "${FMOD_LIBRARY_DIR}/fmodL_vc.lib"
-    )
+# Опционально ищем FMOD
+option(USE_FMOD "Use FMOD for audio" OFF)
+if(USE_FMOD)
+    set(FMOD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/fmod" CACHE PATH "Path to FMOD SDK")
+    if(EXISTS "${FMOD_ROOT}")
+        set(FMOD_INCLUDE_DIR "${FMOD_ROOT}/inc")
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            set(FMOD_LIBRARY_DIR "${FMOD_ROOT}/lib/x64")
+        else()
+            set(FMOD_LIBRARY_DIR "${FMOD_ROOT}/lib/x86")
+        endif()
+        set(FMOD_LIBRARY "${FMOD_LIBRARY_DIR}/fmod_vc.lib")
+        set(FMOD_BINARY "${FMOD_LIBRARY_DIR}/fmod.dll")
+        add_definitions(-DUSE_FMOD)
+    endif()
 endif()
 
-# Опции сборки
+find_package(glfw3 CONFIG REQUIRED)
+
+# Опция для использования legacy рендерера
 option(USE_LEGACY_RENDERER "Use OpenGL legacy renderer" OFF)
 
-# Определяем основные переменные
-if(USE_LEGACY_RENDERER)
-    add_definitions(-DUSE_LEGACY_RENDERER)
-endif()
-
-# Добавляем подпроекты
+# Добавляем подкаталог с исходными файлами
 add_subdirectory(src) 
