@@ -5,7 +5,6 @@
 Engine::Engine() 
     : m_Window(nullptr)
     , m_Renderer(nullptr)
-    , m_AudioSystem(nullptr)
     , m_IsRunning(false) {}
 
 Engine::~Engine() {
@@ -30,12 +29,6 @@ bool Engine::Initialize() {
         return false;
     }
 
-    // Инициализируем аудиосистему
-    m_AudioSystem = new AudioSystem();
-    if (!m_AudioSystem->Initialize()) {
-        return false;
-    }
-
     m_IsRunning = true;
     return true;
 }
@@ -44,7 +37,6 @@ void Engine::Run() {
     while (m_IsRunning && !m_Window->ShouldClose()) {
         // Обновление
         m_Window->Update();
-        m_AudioSystem->Update();
 
         // Рендеринг
         m_Renderer->BeginFrame();
@@ -55,12 +47,6 @@ void Engine::Run() {
 
 void Engine::Shutdown() {
     m_IsRunning = false;
-
-    if (m_AudioSystem) {
-        m_AudioSystem->Shutdown();
-        delete m_AudioSystem;
-        m_AudioSystem = nullptr;
-    }
 
     if (m_Renderer) {
         m_Renderer->Shutdown();
