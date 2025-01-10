@@ -1,0 +1,6 @@
+C:\Projects\Degra Engine\src\main.cpp;C:\Projects\Degra Engine\build\src\DegraEngine.dir\Release\main.obj
+C:\Projects\Degra Engine\src\Engine.cpp;C:\Projects\Degra Engine\build\src\DegraEngine.dir\Release\Engine.obj
+C:\Projects\Degra Engine\src\Window.cpp;C:\Projects\Degra Engine\build\src\DegraEngine.dir\Release\Window.obj
+C:\Projects\Degra Engine\src\Renderer\OpenGLRenderer.cpp;C:\Projects\Degra Engine\build\src\DegraEngine.dir\Release\OpenGLRenderer.obj
+C:\Projects\Degra Engine\src\Renderer\SDLRenderer.cpp;C:\Projects\Degra Engine\build\src\DegraEngine.dir\Release\SDLRenderer.obj
+C:\Projects\Degra Engine\src\Renderer\TextRenderer.cpp;C:\Projects\Degra Engine\build\src\DegraEngine.dir\Release\TextRenderer.obj
