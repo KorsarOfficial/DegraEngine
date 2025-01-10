@@ -1,196 +1,158 @@
 #include "SDLRenderer.hpp"
-#include <SDL_image.h>
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
+#include <stdexcept>
+#include <iostream>
 
-// Размеры символа в пикселях
-const int CHAR_WIDTH = 8;
-const int CHAR_HEIGHT = 16;
+#ifdef _DEBUG
+    #define _CRTDBG_MAP_ALLOC
+    #include <crtdbg.h>
+    #define DEBUG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__)
+    #define new DEBUG_NEW
+#endif
 
-SDLRenderer::SDLRenderer() 
-    : m_Renderer(nullptr)
-    , m_TextRenderer(std::make_unique<TextRenderer>(TEXT_BUFFER_WIDTH, TEXT_BUFFER_HEIGHT))
-{}
+SDLRenderer::SDLRenderer() : m_TextRenderer(nullptr), m_Renderer(nullptr), m_Window(nullptr) {
+    std::cout << "SDLRenderer constructor called" << std::endl;
+}
 
 SDLRenderer::~SDLRenderer() {
+    std::cout << "SDLRenderer destructor called" << std::endl;
     Shutdown();
 }
 
-bool SDLRenderer::Initialize(Window* window) {
-    m_Window = window;
-
-    // Инициализация SDL
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        return false;
+void SDLRenderer::Initialize(int width, int height) {
+    std::cout << "SDLRenderer::Initialize called with width=" << width << ", height=" << height << std::endl;
+    
+    if (m_Window || m_Renderer || m_TextRenderer) {
+        std::cerr << "SDLRenderer already initialized" << std::endl;
+        return;
     }
 
-    // Создаем SDL рендерер
-    SDL_Window* sdlWindow = SDL_CreateWindowFrom(glfwGetWin32Window(window->GetNativeWindow()));
-    if (!sdlWindow) {
-        return false;
-    }
+    try {
+        m_Window = SDL_CreateWindow("Degra Engine",
+            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+            width, height,
+            SDL_WINDOW_SHOWN);
 
-    m_Renderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!m_Renderer) {
-        return false;
-    }
+        if (!m_Window) {
+            throw std::runtime_error(std::string("Failed to create window: ") + SDL_GetError());
+        }
+        std::cout << "SDL Window created successfully" << std::endl;
 
-    // Инициализация SDL_image
-    int imgFlags = IMG_INIT_PNG;
-    if (!(IMG_Init(imgFlags) & imgFlags)) {
-        return false;
-    }
+        m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        if (!m_Renderer) {
+            throw std::runtime_error(std::string("Failed to create renderer: ") + SDL_GetError());
+        }
+        std::cout << "SDL Renderer created successfully" << std::endl;
 
-    return true;
+        std::cout << "Creating TextRenderer..." << std::endl;
+        m_TextRenderer = std::make_unique<TextRenderer>();
+        if (!m_TextRenderer->Initialize(16)) {
+            throw std::runtime_error("Failed to initialize text renderer");
+        }
+        std::cout << "TextRenderer initialized successfully" << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Failed to initialize: " << e.what() << std::endl;
+        Shutdown();
+        throw;
+    }
 }
 
-void SDLRenderer::BeginFrame() {
-    SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
+void SDLRenderer::Clear(const Color& color) {
+    if (!m_Renderer) {
+        std::cerr << "Cannot clear: renderer is null" << std::endl;
+        return;
+    }
+    SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, color.a);
     SDL_RenderClear(m_Renderer);
 }
 
-void SDLRenderer::EndFrame() {
-    RenderText();
+void SDLRenderer::Present() {
+    if (!m_Renderer) {
+        std::cerr << "Cannot present: renderer is null" << std::endl;
+        return;
+    }
     SDL_RenderPresent(m_Renderer);
 }
 
-void SDLRenderer::RenderText() {
-    // Для каждого символа в буфере
-    for (int y = 0; y < m_TextRenderer->GetHeight(); ++y) {
-        for (int x = 0; x < m_TextRenderer->GetWidth(); ++x) {
-            const Glyph& glyph = m_TextRenderer->GetGlyph(x, y);
-
-            // Рисуем фон
-            SDL_Rect bgRect = {
-                x * CHAR_WIDTH,
-                y * CHAR_HEIGHT,
-                CHAR_WIDTH,
-                CHAR_HEIGHT
-            };
-            SDL_SetRenderDrawColor(m_Renderer, 
-                glyph.background.r,
-                glyph.background.g,
-                glyph.background.b,
-                glyph.background.a);
-            SDL_RenderFillRect(m_Renderer, &bgRect);
-
-            // Рисуем символ (в SDL2 это упрощенно, для полной реализации нужно использовать SDL_ttf)
-            SDL_SetRenderDrawColor(m_Renderer,
-                glyph.foreground.r,
-                glyph.foreground.g,
-                glyph.foreground.b,
-                glyph.foreground.a);
-            
-            // Рисуем простой прямоугольник вместо символа (временно)
-            SDL_Rect charRect = {
-                x * CHAR_WIDTH + 2,
-                y * CHAR_HEIGHT + 2,
-                CHAR_WIDTH - 4,
-                CHAR_HEIGHT - 4
-            };
-            if (glyph.character != ' ') {
-                SDL_RenderFillRect(m_Renderer, &charRect);
-            }
-        }
+void SDLRenderer::DrawRect(int x, int y, int width, int height, const Color& color) {
+    if (!m_Renderer) {
+        std::cerr << "Cannot draw rect: renderer is null" << std::endl;
+        return;
     }
+    SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, color.a);
+    SDL_Rect rect = {x, y, width, height};
+    SDL_RenderDrawRect(m_Renderer, &rect);
 }
 
-void SDLRenderer::SetGlyph(int x, int y, const Glyph& glyph) {
-    m_TextRenderer->SetGlyph(x, y, glyph);
+void SDLRenderer::FillRect(int x, int y, int width, int height, const Color& color) {
+    if (!m_Renderer) {
+        std::cerr << "Cannot fill rect: renderer is null" << std::endl;
+        return;
+    }
+    SDL_SetRenderDrawColor(m_Renderer, color.r, color.g, color.b, color.a);
+    SDL_Rect rect = {x, y, width, height};
+    SDL_RenderFillRect(m_Renderer, &rect);
 }
 
-void SDLRenderer::SetChar(int x, int y, char c, const Color& fg, const Color& bg) {
-    m_TextRenderer->SetChar(x, y, c, fg, bg);
+void SDLRenderer::RenderText(const std::string& text, int x, int y, const Color& color) {
+    if (!m_TextRenderer) {
+        std::cerr << "Cannot render text: TextRenderer is null" << std::endl;
+        return;
+    }
+    m_TextRenderer->RenderText(m_Renderer, text, x, y, color);
 }
 
-void SDLRenderer::SetString(int x, int y, const std::string& text, const Color& fg, const Color& bg) {
-    m_TextRenderer->SetString(x, y, text, fg, bg);
+void SDLRenderer::RenderUTF8Text(const std::string& text, int x, int y, const Color& color) {
+    if (!m_TextRenderer) {
+        std::cerr << "Cannot render UTF8 text: TextRenderer is null" << std::endl;
+        return;
+    }
+    m_TextRenderer->RenderUTF8Text(m_Renderer, text, x, y, color);
 }
 
-void SDLRenderer::ClearText(const Color& bg) {
-    m_TextRenderer->Clear(bg);
+void SDLRenderer::GetTextSize(const std::string& text, int& width, int& height) {
+    if (!m_TextRenderer) {
+        std::cerr << "Cannot get text size: TextRenderer is null" << std::endl;
+        width = 0;
+        height = 0;
+        return;
+    }
+    m_TextRenderer->GetTextSize(text, width, height);
+}
+
+void SDLRenderer::GetUTF8TextSize(const std::string& text, int& width, int& height) {
+    if (!m_TextRenderer) {
+        std::cerr << "Cannot get UTF8 text size: TextRenderer is null" << std::endl;
+        width = 0;
+        height = 0;
+        return;
+    }
+    m_TextRenderer->GetUTF8TextSize(text, width, height);
 }
 
 void SDLRenderer::Shutdown() {
-    ClearTextureCache();
-
+    std::cout << "SDLRenderer::Shutdown called" << std::endl;
+    
+    if (m_TextRenderer) {
+        std::cout << "Destroying TextRenderer..." << std::endl;
+        m_TextRenderer.reset();
+        m_TextRenderer = nullptr;
+        std::cout << "TextRenderer destroyed" << std::endl;
+    }
+    
     if (m_Renderer) {
+        std::cout << "Destroying SDL Renderer..." << std::endl;
         SDL_DestroyRenderer(m_Renderer);
         m_Renderer = nullptr;
+        std::cout << "SDL Renderer destroyed" << std::endl;
     }
-
-    IMG_Quit();
-    SDL_Quit();
-}
-
-void SDLRenderer::DrawSprite(const std::string& texturePath, float x, float y, float width, float height) {
-    SDL_Texture* texture = LoadTexture(texturePath);
-    if (!texture) return;
-
-    SDL_Rect dstRect;
-    dstRect.x = static_cast<int>(x);
-    dstRect.y = static_cast<int>(y);
-    dstRect.w = static_cast<int>(width);
-    dstRect.h = static_cast<int>(height);
-
-    SDL_RenderCopy(m_Renderer, texture, nullptr, &dstRect);
-}
-
-void SDLRenderer::DrawLine(float x1, float y1, float x2, float y2, float thickness) {
-    SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, 255);
     
-    if (thickness <= 1.0f) {
-        SDL_RenderDrawLine(m_Renderer, 
-            static_cast<int>(x1), 
-            static_cast<int>(y1), 
-            static_cast<int>(x2), 
-            static_cast<int>(y2));
-    } else {
-        // Для толстых линий рисуем несколько параллельных линий
-        for (float i = -thickness/2; i < thickness/2; i += 1.0f) {
-            SDL_RenderDrawLine(m_Renderer, 
-                static_cast<int>(x1 + i), 
-                static_cast<int>(y1 + i), 
-                static_cast<int>(x2 + i), 
-                static_cast<int>(y2 + i));
-        }
+    if (m_Window) {
+        std::cout << "Destroying SDL Window..." << std::endl;
+        SDL_DestroyWindow(m_Window);
+        m_Window = nullptr;
+        std::cout << "SDL Window destroyed" << std::endl;
     }
-}
-
-void SDLRenderer::SetClearColor(float r, float g, float b, float a) {
-    SDL_SetRenderDrawColor(m_Renderer, 
-        static_cast<Uint8>(r * 255), 
-        static_cast<Uint8>(g * 255), 
-        static_cast<Uint8>(b * 255), 
-        static_cast<Uint8>(a * 255));
-}
-
-SDL_Texture* SDLRenderer::LoadTexture(const std::string& path) {
-    // Проверяем кэш
-    auto it = m_TextureCache.find(path);
-    if (it != m_TextureCache.end()) {
-        return it->second;
-    }
-
-    // Загружаем новую текстуру
-    SDL_Surface* surface = IMG_Load(path.c_str());
-    if (!surface) {
-        return nullptr;
-    }
-
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(m_Renderer, surface);
-    SDL_FreeSurface(surface);
-
-    if (texture) {
-        m_TextureCache[path] = texture;
-    }
-
-    return texture;
-}
-
-void SDLRenderer::ClearTextureCache() {
-    for (auto& pair : m_TextureCache) {
-        SDL_DestroyTexture(pair.second);
-    }
-    m_TextureCache.clear();
+    
+    std::cout << "SDLRenderer shutdown complete" << std::endl;
 } 
