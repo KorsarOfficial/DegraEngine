@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Renderer.hpp"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <string>
 #include <unordered_map>
 
