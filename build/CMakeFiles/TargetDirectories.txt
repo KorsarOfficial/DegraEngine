@@ -1,0 +1,3 @@
+C:/Projects/Degra Engine/build/CMakeFiles/ALL_BUILD.dir
+C:/Projects/Degra Engine/build/CMakeFiles/ZERO_CHECK.dir
+C:/Projects/Degra Engine/build/src/CMakeFiles/DegraEngine.dir
