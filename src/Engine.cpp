@@ -34,13 +34,26 @@ bool Engine::Initialize() {
 }
 
 void Engine::Run() {
+    // Тестовый текст
+    m_Renderer->SetString(0, 0, "Degra Engine - ASCII Mode", Color(255, 255, 255), Color(0, 0, 0));
+    m_Renderer->SetString(0, 2, "Press ESC to exit", Color(255, 255, 0), Color(0, 0, 0));
+    
+    // Рамка
+    for (int x = 0; x < 80; ++x) {
+        m_Renderer->SetChar(x, 4, '-', Color(255, 255, 255), Color(0, 0, 0));
+        m_Renderer->SetChar(x, 24, '-', Color(255, 255, 255), Color(0, 0, 0));
+    }
+    for (int y = 4; y <= 24; ++y) {
+        m_Renderer->SetChar(0, y, '|', Color(255, 255, 255), Color(0, 0, 0));
+        m_Renderer->SetChar(79, y, '|', Color(255, 255, 255), Color(0, 0, 0));
+    }
+
     while (m_IsRunning && !m_Window->ShouldClose()) {
         // Обновление
         m_Window->Update();
 
         // Рендеринг
         m_Renderer->BeginFrame();
-        // Здесь будет игровая логика
         m_Renderer->EndFrame();
     }
 }
