@@ -1,6 +1,21 @@
 #include "OpenGLRenderer.hpp"
 #include <stdexcept>
 
+// Размеры символа в пикселях
+const int CHAR_WIDTH = 8;
+const int CHAR_HEIGHT = 16;
+
+// Базовый набор ASCII символов (первые 128 символов)
+const unsigned char fontData8x16[128 * 16] = {
+    // Здесь данные для символа 0x00
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // Символ 'A' (0x41)
+    0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x7E, 0x66, 0x66, 0x66, 0x66, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // Символ 'B' (0x42)
+    0x00, 0x00, 0x7C, 0x66, 0x66, 0x66, 0x7C, 0x66, 0x66, 0x66, 0x7C, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // ... добавьте остальные символы
+};
+
 OpenGLRenderer::OpenGLRenderer() 
     : m_ShaderProgram(0)
     , m_VAO(0)
@@ -131,8 +146,38 @@ bool OpenGLRenderer::InitializeTextRendering() {
 }
 
 bool OpenGLRenderer::CreateFontTexture() {
-    // Здесь будет создание текстуры шрифта
-    // Пока что используем простую текстуру 8x8 для каждого символа
+    // Создаем текстуру
+    glGenTextures(1, &m_FontTexture);
+    glBindTexture(GL_TEXTURE_2D, m_FontTexture);
+
+    // Создаем временный буфер для текстуры
+    const int TEXTURE_WIDTH = CHAR_WIDTH * 16;  // 16 символов в ширину
+    const int TEXTURE_HEIGHT = CHAR_HEIGHT * 8; // 8 символов в высоту
+    std::vector<unsigned char> textureData(TEXTURE_WIDTH * TEXTURE_HEIGHT, 0);
+
+    // Заполняем текстуру данными шрифта
+    for (int charIndex = 0; charIndex < 128; ++charIndex) {
+        int baseX = (charIndex % 16) * CHAR_WIDTH;
+        int baseY = (charIndex / 16) * CHAR_HEIGHT;
+
+        for (int y = 0; y < CHAR_HEIGHT; ++y) {
+            unsigned char row = fontData8x16[charIndex * CHAR_HEIGHT + y];
+            for (int x = 0; x < CHAR_WIDTH; ++x) {
+                bool pixel = (row & (0x80 >> x)) != 0;
+                textureData[(baseY + y) * TEXTURE_WIDTH + baseX + x] = pixel ? 255 : 0;
+            }
+        }
+    }
+
+    // Загружаем текстуру в OpenGL
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, textureData.data());
+
+    // Настраиваем параметры текстуры
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
     return true;
 }
 
@@ -147,13 +192,60 @@ void OpenGLRenderer::EndFrame() {
 }
 
 void OpenGLRenderer::RenderText() {
-    // Здесь будет рендеринг текста из m_TextRenderer
     glUseProgram(m_TextShaderProgram);
     glBindVertexArray(m_TextVAO);
+    glBindTexture(GL_TEXTURE_2D, m_FontTexture);
 
-    // TODO: Добавить рендеринг текста
+    // Включаем смешивание для прозрачности
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    // Для каждого символа в буфере
+    for (int y = 0; y < m_TextRenderer->GetHeight(); ++y) {
+        for (int x = 0; x < m_TextRenderer->GetWidth(); ++x) {
+            const Glyph& glyph = m_TextRenderer->GetGlyph(x, y);
+            if (glyph.character == ' ') continue;
+
+            // Вычисляем координаты текстуры для символа
+            float texX = (glyph.character % 16) / 16.0f;
+            float texY = (glyph.character / 16) / 8.0f;
+            float texWidth = 1.0f / 16.0f;
+            float texHeight = 1.0f / 8.0f;
+
+            // Вычисляем координаты вершин
+            float xPos = x * CHAR_WIDTH;
+            float yPos = y * CHAR_HEIGHT;
+
+            // Создаем вершины для символа
+            float vertices[6][4] = {
+                { xPos,              yPos + CHAR_HEIGHT,  texX,          texY + texHeight },
+                { xPos + CHAR_WIDTH, yPos,               texX + texWidth, texY },
+                { xPos,              yPos,               texX,           texY },
+
+                { xPos,              yPos + CHAR_HEIGHT,  texX,          texY + texHeight },
+                { xPos + CHAR_WIDTH, yPos + CHAR_HEIGHT,  texX + texWidth, texY + texHeight },
+                { xPos + CHAR_WIDTH, yPos,               texX + texWidth, texY }
+            };
+
+            // Обновляем VBO
+            glBindBuffer(GL_ARRAY_BUFFER, m_TextVBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+
+            // Устанавливаем цвет текста
+            glUniform4f(glGetUniformLocation(m_TextShaderProgram, "textColor"),
+                glyph.foreground.r / 255.0f,
+                glyph.foreground.g / 255.0f,
+                glyph.foreground.b / 255.0f,
+                glyph.foreground.a / 255.0f);
+
+            // Рисуем символ
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+    }
+
+    glDisable(GL_BLEND);
     glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glUseProgram(0);
 }
 
