@@ -2,7 +2,6 @@
 
 #include "Window.hpp"
 #include "Renderer/Renderer.hpp"
-#include "Audio/AudioSystem.hpp"
 
 class Engine {
 public:
@@ -16,7 +15,5 @@ public:
 private:
     Window* m_Window;
     Renderer* m_Renderer;
-    AudioSystem* m_AudioSystem;
-    
     bool m_IsRunning;
 }; 
