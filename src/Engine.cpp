@@ -1,75 +1,111 @@
 #include "Engine.hpp"
-#include "Renderer/OpenGLRenderer.hpp"
 #include "Renderer/SDLRenderer.hpp"
+#include "Renderer/OpenGLRenderer.hpp"
+#include <stdexcept>
+#include <iostream>
 
-Engine::Engine() 
-    : m_Window(nullptr)
-    , m_Renderer(nullptr)
-    , m_IsRunning(false) {}
+Engine::Engine() : m_Running(false), m_Renderer(nullptr), m_Menu(nullptr) {
+    std::cout << "Engine constructor called" << std::endl;
+}
 
 Engine::~Engine() {
+    std::cout << "Engine destructor called" << std::endl;
     Shutdown();
 }
 
-bool Engine::Initialize() {
-    // Создаем окно
-    m_Window = new Window();
-    if (!m_Window->Initialize("Degra Engine", 1280, 720)) {
-        return false;
-    }
-
-    // Создаем рендерер в зависимости от конфигурации
-    #ifdef USE_LEGACY_RENDERER
-        m_Renderer = new OpenGLRenderer();
-    #else
-        m_Renderer = new SDLRenderer();
-    #endif
-
-    if (!m_Renderer->Initialize(m_Window)) {
-        return false;
-    }
-
-    m_IsRunning = true;
-    return true;
-}
-
-void Engine::Run() {
-    // Тестовый текст
-    m_Renderer->SetString(0, 0, "Degra Engine - ASCII Mode", Color(255, 255, 255), Color(0, 0, 0));
-    m_Renderer->SetString(0, 2, "Press ESC to exit", Color(255, 255, 0), Color(0, 0, 0));
+bool Engine::Initialize(int width, int height, bool useOpenGL) {
+    std::cout << "Engine::Initialize called with width=" << width << ", height=" << height << std::endl;
     
-    // Рамка
-    for (int x = 0; x < 80; ++x) {
-        m_Renderer->SetChar(x, 4, '-', Color(255, 255, 255), Color(0, 0, 0));
-        m_Renderer->SetChar(x, 24, '-', Color(255, 255, 255), Color(0, 0, 0));
-    }
-    for (int y = 4; y <= 24; ++y) {
-        m_Renderer->SetChar(0, y, '|', Color(255, 255, 255), Color(0, 0, 0));
-        m_Renderer->SetChar(79, y, '|', Color(255, 255, 255), Color(0, 0, 0));
-    }
+    try {
+        if (m_Running) {
+            std::cerr << "Engine already initialized" << std::endl;
+            return false;
+        }
 
-    while (m_IsRunning && !m_Window->ShouldClose()) {
-        // Обновление
-        m_Window->Update();
+        std::cout << "Creating renderer..." << std::endl;
+        if (useOpenGL) {
+            m_Renderer = std::make_unique<OpenGLRenderer>();
+        } else {
+            m_Renderer = std::make_unique<SDLRenderer>();
+        }
 
-        // Рендеринг
-        m_Renderer->BeginFrame();
-        m_Renderer->EndFrame();
+        std::cout << "Initializing renderer..." << std::endl;
+        m_Renderer->Initialize(width, height);
+
+        std::cout << "Creating menu..." << std::endl;
+        m_Menu = std::make_unique<Menu>(m_Renderer.get());
+        std::cout << "Menu created successfully" << std::endl;
+
+        m_Running = true;
+        std::cout << "Engine initialized successfully" << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Ошибка инициализации: " << e.what() << std::endl;
+        Shutdown();
+        return false;
     }
 }
 
 void Engine::Shutdown() {
-    m_IsRunning = false;
+    std::cout << "Engine::Shutdown called" << std::endl;
+    
+    m_Running = false;
 
-    if (m_Renderer) {
-        m_Renderer->Shutdown();
-        delete m_Renderer;
-        m_Renderer = nullptr;
+    if (m_Menu) {
+        std::cout << "Destroying menu..." << std::endl;
+        m_Menu.reset();
+        std::cout << "Menu destroyed" << std::endl;
     }
 
-    if (m_Window) {
-        m_Window->Shutdown();
-        delete m_Window;
-        m_Window = nullptr;
+    if (m_Renderer) {
+        std::cout << "Destroying renderer..." << std::endl;
+        m_Renderer.reset();
+        std::cout << "Renderer destroyed" << std::endl;
+    }
+
+    std::cout << "Engine shutdown complete" << std::endl;
+}
+
+void Engine::Run() {
+    if (!m_Running || !m_Renderer || !m_Menu) {
+        std::cerr << "Engine not properly initialized" << std::endl;
+        return;
+    }
+
+    std::cout << "Starting main loop..." << std::endl;
+    while (m_Running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            switch (event.type) {
+                case SDL_QUIT:
+                    std::cout << "Quit event received" << std::endl;
+                    m_Running = false;
+                    break;
+                case SDL_KEYDOWN:
+                    if (event.key.keysym.sym == SDLK_ESCAPE) {
+                        std::cout << "Escape key pressed" << std::endl;
+                        m_Running = false;
+                    }
+                    break;
+            }
+        }
+
+        if (!m_Running) break;
+
+        m_Menu->Update();
+        m_Renderer->Clear(Color(0, 0, 0));
+        m_Menu->Render();
+        m_Renderer->Present();
+
+        SDL_Delay(16);
+    }
+    std::cout << "Main loop finished" << std::endl;
+}
+
+void Engine::RenderText(const std::string& text, int x, int y, const Color& color) {
+    if (m_Renderer) {
+        m_Renderer->RenderUTF8Text(text, x, y, color);
+    } else {
+        std::cerr << "Cannot render text: renderer is null" << std::endl;
     }
 } 
